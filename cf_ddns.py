@@ -10,13 +10,15 @@ Config via environment variables:
   CF_PROXIED     (optional) - true/false; default false
   CF_TTL         (optional) - TTL in seconds; default 300
   CF_INTERVAL    (optional) - Loop interval in seconds; default 300
+  CF_LOG_FILE    (optional) - Rotating log file path
 
 Example:
   CF_API_TOKEN=xxx CF_ZONE_ID=yyy CF_RECORD_NAME=home.example.com \
-  CF_PROXIED=false CF_INTERVAL=300 python3 cf_ddns.py
+  CF_PROXIED=false CF_INTERVAL=300 CF_LOG_FILE=./cf-ddns.log python3 cf_ddns.py
 """
 
 import json
+import logging
 import os
 import re
 import sys
@@ -24,6 +26,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from logging.handlers import RotatingFileHandler
 
 
 CIP_URLS = [
@@ -33,11 +36,40 @@ CIP_URLS = [
 IP_REGEX = re.compile(
     r"\b(?:(?:2(?:5[0-5]|[0-4][0-9])|1?[0-9]{1,2})\.){3}(?:2(?:5[0-5]|[0-4][0-9])|1?[0-9]{1,2})\b"
 )
+LOG_MAX_BYTES = 1024 * 1024
+LOG_BACKUP_COUNT = 3
+LOGGER = None
+
+
+def get_logger():
+    logger = logging.getLogger("cf_ddns")
+    if logger.handlers:
+        return logger
+
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+    formatter = logging.Formatter("[%(asctime)s] %(message)s", "%Y-%m-%d %H:%M:%S")
+    log_file = os.getenv("CF_LOG_FILE", "").strip()
+    if log_file:
+        log_file = os.path.expanduser(log_file)
+        log_dir = os.path.dirname(log_file)
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
+        handler = RotatingFileHandler(
+            log_file, maxBytes=LOG_MAX_BYTES, backupCount=LOG_BACKUP_COUNT
+        )
+    else:
+        handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    return logger
 
 
 def log(msg):
-    ts = time.strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{ts}] {msg}", flush=True)
+    global LOGGER
+    if LOGGER is None:
+        LOGGER = get_logger()
+    LOGGER.info(msg)
 
 
 def env_bool(name, default=False):

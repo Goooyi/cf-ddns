@@ -18,20 +18,25 @@ const CONFIG = {
     { url: 'https://cip.cc', headers: { 'User-Agent': 'curl/8.0 Surge-DDNS' } },
     { url: 'http://cip.cc', headers: { 'User-Agent': 'curl/8.0 Surge-DDNS' } } // fallback
   ],
-  notifyOnChange: true
+  notifyOnChange:
+    readBoolean('cf_ddns_notify_on_change') ??
+    true
 };
 
 (function hydrateFromArgument() {
   const args = parseArgument($argument);
   if (!args) return;
-  CONFIG.apiToken = args.apiToken || CONFIG.apiToken;
-  CONFIG.zoneId = args.zoneId || CONFIG.zoneId;
-  CONFIG.recordName = args.recordName || CONFIG.recordName;
+  CONFIG.apiToken = pick(args, 'apiToken', 'CF_API_TOKEN') || CONFIG.apiToken;
+  CONFIG.zoneId = pick(args, 'zoneId', 'CF_ZONE_ID') || CONFIG.zoneId;
+  CONFIG.recordName = pick(args, 'recordName', 'CF_RECORD_NAME') || CONFIG.recordName;
+  CONFIG.notifyOnChange =
+    parseBoolean(pick(args, 'notifyOnChange', 'notify', 'CF_NOTIFY_ON_CHANGE')) ??
+    CONFIG.notifyOnChange;
   CONFIG.proxied =
-    args.proxied !== undefined
-      ? args.proxied === 'true' || args.proxied === true
+    pick(args, 'proxied', 'CF_PROXIED') !== undefined
+      ? parseBoolean(pick(args, 'proxied', 'CF_PROXIED')) === true
       : CONFIG.proxied;
-  CONFIG.ttl = args.ttl ? Number(args.ttl) : CONFIG.ttl;
+  CONFIG.ttl = pick(args, 'ttl', 'CF_TTL') ? Number(pick(args, 'ttl', 'CF_TTL')) : CONFIG.ttl;
 })();
 
 (async () => {
@@ -50,9 +55,9 @@ const CONFIG = {
     }
 
     await updateDNSRecord(record.id, currentIP);
-    finish(`Updated ${CONFIG.recordName} to ${currentIP}; proxied=${CONFIG.proxied}`);
+    finish(`Updated ${CONFIG.recordName} to ${currentIP}; proxied=${CONFIG.proxied}`, false, CONFIG.notifyOnChange);
   } catch (err) {
-    finish(`Cloudflare DDNS error: ${err.message}`, true);
+    finish(`Cloudflare DDNS error: ${err.message}`, true, true);
   }
 })();
 
@@ -176,9 +181,9 @@ function safeJSON(str) {
   }
 }
 
-function finish(msg, isError = false) {
+function finish(msg, isError = false, notify = false) {
   const title = isError ? 'Cloudflare DDNS: Error' : 'Cloudflare DDNS: OK';
-  if (isError || CONFIG.notifyOnChange) {
+  if (notify) {
     $notification.post(title, '', msg);
   }
   $done({ msg, error: isError ? msg : undefined });
@@ -187,11 +192,33 @@ function finish(msg, isError = false) {
 function parseArgument(arg) {
   if (!arg || typeof arg !== 'string') return null;
   const out = {};
-  const pairs = arg.split(/[,;&\n]/).map((s) => s.trim()).filter(Boolean);
+  const pairs = arg.split(/[,&;\n]/).map((s) => s.trim()).filter(Boolean);
   for (const pair of pairs) {
-    const [k, v] = pair.split('=');
+    const i = pair.indexOf('=');
+    const k = i >= 0 ? pair.slice(0, i) : pair;
+    const v = i >= 0 ? pair.slice(i + 1) : '';
     if (!k) continue;
-    out[k.trim()] = v !== undefined ? v.trim() : '';
+    out[decodeArg(k.trim())] = decodeArg(v.trim());
   }
   return out;
+}
+
+function pick(obj, ...keys) {
+  for (const key of keys) {
+    if (obj[key] !== undefined && obj[key] !== '') return obj[key];
+  }
+  return undefined;
+}
+
+function parseBoolean(val) {
+  if (val === undefined || val === null || val === '') return null;
+  return val === true || ['1', 'true', 'yes', 'on'].includes(String(val).toLowerCase());
+}
+
+function decodeArg(val) {
+  try {
+    return decodeURIComponent(String(val).replace(/\+/g, ' '));
+  } catch (_) {
+    return val;
+  }
 }

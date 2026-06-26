@@ -1,0 +1,9 @@
+.env
+.env.*
+!.env.example
+*.log
+*.log.*
+nohup.out
+__pycache__/
+*.py[cod]
+.DS_Store
