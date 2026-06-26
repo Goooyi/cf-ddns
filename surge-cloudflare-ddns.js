@@ -14,7 +14,8 @@ const CONFIG = {
     false, // set to true to enable Cloudflare proxy on the record
   ttl: Number($persistentStore.read('cf_ddns_ttl')) || 300, // seconds; 1 = auto, min 120 for most plans
   ipLookupTargets: [
-    // Use cip.cc only; keep http/https variants with a curl-ish UA for compatibility.
+    // api.cloudflare.com is already DIRECT for Cloudflare API calls; use its trace page before cip.cc.
+    { url: 'https://api.cloudflare.com/cdn-cgi/trace' },
     { url: 'https://cip.cc', headers: { 'User-Agent': 'curl/8.0 Surge-DDNS' } },
     { url: 'http://cip.cc', headers: { 'User-Agent': 'curl/8.0 Surge-DDNS' } } // fallback
   ],
@@ -24,7 +25,7 @@ const CONFIG = {
 };
 
 (function hydrateFromArgument() {
-  const args = parseArgument($argument);
+  const args = parseArgument(typeof $argument === 'undefined' ? '' : $argument);
   if (!args) return;
   if (parseBoolean(pick(args, 'setup')) === true) {
     saveConfig(args);
