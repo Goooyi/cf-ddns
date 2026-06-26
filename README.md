@@ -46,15 +46,28 @@ Use this instead of the Python loop on Surge Mac:
 1. Add `cloudflare-ddns.sgmodule` to Surge, or install it from:
    `https://raw.githubusercontent.com/Goooyi/cf-ddns/main/cloudflare-ddns.sgmodule`
 2. Enable the module.
-3. Right-click the module, choose “Edit Argument”, and fill:
-   - `apiToken`: Cloudflare API token with Zone DNS Edit permission.
-   - `zoneId`: Cloudflare Zone ID.
-   - `recordName`: full A record name, such as `home.example.com`.
-   - `proxied`: `true` or `false`.
-   - `ttl`: `300` or `1` for auto.
-   - `notifyOnChange`: `true` to notify only on DNS update or error.
+3. Configure Surge's persistent script storage once:
+   ```bash
+   set -a
+   . ./.env
+   set +a
+   ARG=$(python3 - <<'PY'
+   import os, urllib.parse
+   print(urllib.parse.urlencode({
+       "setup": "true",
+       "apiToken": os.environ["CF_API_TOKEN"],
+       "zoneId": os.environ["CF_ZONE_ID"],
+       "recordName": os.environ["CF_RECORD_NAME"],
+       "proxied": os.environ.get("CF_PROXIED", "false"),
+       "ttl": os.environ.get("CF_TTL", "300"),
+       "notifyOnChange": "true",
+   }))
+   PY
+   )
+   /Applications/Surge.app/Contents/Applications/surge-cli --raw script evaluate surge-cloudflare-ddns.js cron 30 auto "$ARG"
+   ```
 
-Surge does not read `.env`; the “Edit Argument” dialog is the Surge config for this module. URL install requires this GitHub repo to be public or otherwise reachable by Surge.
+Surge does not read `.env`; the setup command copies the needed values into Surge's persistent script storage. URL install requires this GitHub repo to be public or otherwise reachable by Surge.
 
 The module runs `surge-cloudflare-ddns.js` every 5 minutes and forces `cip.cc` plus `api.cloudflare.com` through `DIRECT`, so the IP check sees this network instead of a proxy exit IP.
 

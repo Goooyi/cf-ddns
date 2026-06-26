@@ -1,11 +1,9 @@
 #!name=Cloudflare DDNS
-#!desc=Update one Cloudflare A record from cip.cc every 5 minutes.
+#!desc=Update one Cloudflare A record from cip.cc every 5 minutes. Configure once with surge-cli setup.
 #!system=mac
-#!arguments=apiToken=&zoneId=&recordName=home.example.com&proxied=false&ttl=300&notifyOnChange=true
-#!arguments-desc=apiToken: Cloudflare API token with Zone DNS Edit permission.\nzoneId: Cloudflare Zone ID.\nrecordName: Full A record name, e.g. home.example.com.\nproxied: true or false.\nttl: Cloudflare TTL seconds; 1 means auto.\nnotifyOnChange: true sends a notification only when DNS changes or errors.
 
 [Script]
-Cloudflare DDNS = type=cron, cronexp="*/5 * * * *", script-path=https://raw.githubusercontent.com/Goooyi/cf-ddns/main/surge-cloudflare-ddns.js, script-update-interval=3600, timeout=30, wake-system=true, argument=apiToken=%apiToken%&zoneId=%zoneId%&recordName=%recordName%&proxied=%proxied%&ttl=%ttl%&notifyOnChange=%notifyOnChange%
+Cloudflare DDNS = type=cron, cronexp="*/5 * * * *", script-path=https://raw.githubusercontent.com/Goooyi/cf-ddns/main/surge-cloudflare-ddns.js, script-update-interval=3600, timeout=30, wake-system=true
 
 [Rule]
 DOMAIN,cip.cc,DIRECT

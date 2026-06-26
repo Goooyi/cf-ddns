@@ -26,6 +26,11 @@ const CONFIG = {
 (function hydrateFromArgument() {
   const args = parseArgument($argument);
   if (!args) return;
+  if (parseBoolean(pick(args, 'setup')) === true) {
+    saveConfig(args);
+    finish('Saved Cloudflare DDNS config');
+    return true;
+  }
   CONFIG.apiToken = pick(args, 'apiToken', 'CF_API_TOKEN') || CONFIG.apiToken;
   CONFIG.zoneId = pick(args, 'zoneId', 'CF_ZONE_ID') || CONFIG.zoneId;
   CONFIG.recordName = pick(args, 'recordName', 'CF_RECORD_NAME') || CONFIG.recordName;
@@ -37,9 +42,10 @@ const CONFIG = {
       ? parseBoolean(pick(args, 'proxied', 'CF_PROXIED')) === true
       : CONFIG.proxied;
   CONFIG.ttl = pick(args, 'ttl', 'CF_TTL') ? Number(pick(args, 'ttl', 'CF_TTL')) : CONFIG.ttl;
-})();
+  return false;
+})() || run();
 
-(async () => {
+async function run() {
   try {
     validateConfig();
     const currentIP = await getPublicIP();
@@ -59,7 +65,7 @@ const CONFIG = {
   } catch (err) {
     finish(`Cloudflare DDNS error: ${err.message}`, true, true);
   }
-})();
+}
 
 function validateConfig() {
   if (!CONFIG.apiToken || !CONFIG.zoneId || !CONFIG.recordName) {
@@ -189,6 +195,25 @@ function finish(msg, isError = false, notify = false) {
   $done({ msg, error: isError ? msg : undefined });
 }
 
+function saveConfig(args) {
+  const fields = [
+    ['cf_ddns_api_token', 'apiToken', 'CF_API_TOKEN'],
+    ['cf_ddns_zone_id', 'zoneId', 'CF_ZONE_ID'],
+    ['cf_ddns_record_name', 'recordName', 'CF_RECORD_NAME'],
+    ['cf_ddns_proxied', 'proxied', 'CF_PROXIED'],
+    ['cf_ddns_ttl', 'ttl', 'CF_TTL'],
+    ['cf_ddns_notify_on_change', 'notifyOnChange', 'notify', 'CF_NOTIFY_ON_CHANGE']
+  ];
+  let saved = 0;
+  for (const [storeKey, ...argKeys] of fields) {
+    const value = pick(args, ...argKeys);
+    if (value !== undefined) {
+      saved += $persistentStore.write(String(value), storeKey) ? 1 : 0;
+    }
+  }
+  if (saved === 0) throw new Error('No config values to save.');
+}
+
 function parseArgument(arg) {
   if (!arg || typeof arg !== 'string') return null;
   const out = {};
@@ -204,8 +229,9 @@ function parseArgument(arg) {
 }
 
 function pick(obj, ...keys) {
+  if (!obj) return undefined;
   for (const key of keys) {
-    if (obj[key] !== undefined && obj[key] !== '') return obj[key];
+    if (obj[key] !== undefined && obj[key] !== '' && !isPlaceholder(obj[key])) return obj[key];
   }
   return undefined;
 }
@@ -221,4 +247,8 @@ function decodeArg(val) {
   } catch (_) {
     return val;
   }
+}
+
+function isPlaceholder(val) {
+  return /^%[A-Za-z0-9_]+%$/.test(String(val));
 }
