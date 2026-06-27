@@ -3,7 +3,7 @@
 #!system=mac
 
 [Script]
-Cloudflare DDNS = type=cron, cronexp="*/5 * * * *", script-path=https://raw.githubusercontent.com/Goooyi/cf-ddns/main/surge-cloudflare-ddns.js, script-update-interval=3600, timeout=30, wake-system=true
+Cloudflare DDNS = type=cron, cronexp="*/30 * * * *", script-path=https://raw.githubusercontent.com/Goooyi/cf-ddns/main/surge-cloudflare-ddns.js, script-update-interval=86400, timeout=30
 
 [Rule]
 DOMAIN,cip.cc,DIRECT

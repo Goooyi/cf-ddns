@@ -69,7 +69,7 @@ Use this instead of the Python loop on Surge Mac:
 
 Surge does not read `.env`; the setup command copies the needed values into Surge's persistent script storage. URL install requires this GitHub repo to be public or otherwise reachable by Surge.
 
-The module runs `surge-cloudflare-ddns.js` every 5 minutes and forces `cip.cc` plus `api.cloudflare.com` through `DIRECT`, so the IP check sees this network instead of a proxy exit IP.
+The module runs `surge-cloudflare-ddns.js` every 30 minutes and forces `cip.cc` plus `api.cloudflare.com` through `DIRECT`, so the IP check sees this network instead of a proxy exit IP.
 
 ### Stopping the script
 - If launched via nohup: `pkill -f cf_ddns.py`
