@@ -1,5 +1,5 @@
 #!name=Cloudflare DDNS
-#!desc=Update one Cloudflare A record from cip.cc every 5 minutes. Configure once with surge-cli setup.
+#!desc=Update one Cloudflare A record every 30 minutes. Configure once with surge-cli setup.
 #!system=mac
 
 [Script]
